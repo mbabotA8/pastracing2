@@ -1,51 +1,58 @@
 # Pastracing 2
 
-## V3 — controles independientes y movimiento ampliado
+Proyector de imágenes en realidad aumentada para continuar un mural con Meta Quest. Preparado para validar encaje y guardado en **Quest 3S**.
 
-Versión de prueba: https://mbabota8.github.io/pastracing2/
+**Abrir:** https://mbabota8.github.io/pastracing2/
 
-El joystick izquierdo desplaza la imagen sobre su plano (máximo 10 cm/s); el mando derecho conserva sus controles. Los gatillos y botones X/Y mantienen sus funciones. Disponible en modo manual y sobre paredes, también con anclajes recuperados.
+## Preparar el mural
 
-Antes de entrar en AR se puede activar **Movimiento ampliado — experimental**. Solicita un espacio `unbounded` y vuelve a `local-floor` si no está disponible. El perímetro físico se configura en Quest. El efecto real sobre los avisos e interrupciones debe validarse en el visor.
+El [mural completo](Images/mural.png) está incluido y se carga por defecto; no depende de Catbox. Puede elegir otra imagen mediante una URL. Al continuar un trabajo guardado se utiliza su propia imagen y sus ajustes.
 
-Los trabajos de V3 se guardan por separado de V2. La calibración y precisión del guardado continúan en V2. Consulte [VALIDATION-V3.md](VALIDATION-V3.md) para los controles y las pruebas de aceptación. Pruebas automáticas: `node --test`.
+1. Abra la web en Meta Quest Browser, sin navegación privada. Configure la habitación en Ajustes de Quest si no aparecen paredes.
+2. Marque tres detalles del dibujo en la vista de la imagen, formando un triángulo amplio. Recuerde su orden. También puede hacerlo en AR mediante **Encajar con 3 puntos**.
+3. Entre en realidad aumentada. Apunte al muro principal con el mando derecho y pulse el gatillo para seleccionar su plano. No seleccione la cara de la columna.
+4. Marque en la pared los mismos detalles en el mismo orden. Si los seleccionó en el panel del visor, pulse **Marcar en la pared** después del tercer punto.
+5. Revise el encaje y su error calculado. La imagen conserva sus proporciones; no se estira para forzar la coincidencia. Use **Ajuste fino** o repita los puntos si hace falta.
+6. Pulse **Bloquear y dibujar** y después **Guardar trabajo**. Compruebe las líneas desde varias posiciones antes de trazar.
 
-**Drawing/tracing projector in Augmented Reality (Passthrough)**
+La columna y las actualizaciones de otras paredes no cambian el plano elegido. Cambiarlo requiere **Elegir otra pared**. Bloquear evita cambios accidentales con los mandos; el seguimiento espacial del visor debe comprobarse físicamente.
 
-This is a simple [WebXR](https://immersiveweb.dev) app built with [three.js](https://threejs.org) and [three-mesh-ui](https://felixmariotto.github.io/three-mesh-ui/) that lets you use your Meta Quest 2 and Meta Quest Pro to draw/trace on top of virtual images in Augmented Reality.
+## Controles
 
-Inspired by [Easely](https://github.com/RalphVR/easely-meta-hackathon) and [Contour](https://sidequestvr.com/app/6643/contour-demo).
+Apunte a los botones del panel con el mando derecho y pulse el gatillo. El panel aparece a un lado para dejar libre el centro del mural; al seleccionar puntos de la imagen aparece delante.
 
-## Instructions
+| Control                                       | Función                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------- |
+| Gatillo derecho, modo pared                   | Seleccionar el muro o marcar un punto; no recoloca una imagen ya ajustada |
+| Joystick izquierdo, sin bloquear              | Desplazar sobre el plano de la imagen, máximo 10 cm/s                     |
+| Joystick derecho arriba / abajo, sin bloquear | Aumentar / reducir tamaño                                                 |
+| Joystick derecho derecha / izquierda          | Aumentar / reducir opacidad, también con la imagen bloqueada              |
+| Ajuste fino                                   | Desplazamiento de 1 mm, giro de 0,05° y tamaño de 0,1 %                   |
+| B o Y, modo pared                             | Guardar trabajo                                                           |
+| A o X, modo pared sin paredes                 | Solicitar configuración de la habitación                                  |
+| Mostrar / ocultar                             | Alternar la imagen sin cambiar su posición                                |
+| Ajustar de nuevo                              | Desbloquear para corregir el encaje                                       |
 
-[Video](https://www.youtube.com/watch?v=tJqXpbIeRK8)
+**Modo manual:** no detecta paredes ni ofrece encaje por tres puntos. Mantenga un gatillo para colocar y orientar; gatillo derecho más joystick derecho vertical ajusta profundidad. A/X muestra u oculta la imagen y B/Y muestra u oculta la ayuda. Puede bloquear y guardar desde el panel.
 
-1. Navigate to [mbabota8.github.io/pastracing2](https://mbabota8.github.io/pastracing2) with your PC.
+## Guardar y recuperar
 
-2. Copy an image URL and paste on the text field. For example, a public domain image from [rawpixel](https://www.rawpixel.com/public-domain).
+El guardado reutiliza la imagen cargada y conserva el último registro válido si falla. Solo confirma el éxito después de completar la escritura local. Si no hay anclajes persistentes, guarda imagen y ajustes y avisa de que habrá que recolocar.
 
-*Keep in mind that some [CORS policies](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) might prevent the app from loading images from certain websites. You'll want to use URLs from websites that allow their content to be loaded from any origin* (`Access-Control-Allow-Origin: *`).
+Al continuar, espere a que se localice el anclaje, compruebe el dibujo y pulse **Confirmar encaje**. Si no se recupera en 30 segundos, use **Reintentar** o **Volver a encajar**. La imagen se oculta si el anclaje pierde seguimiento.
 
-3. Click on "Load image" to reload the page with this image, or click on "Send link to Meta Quest" to send this to your Meta Quest 2 or Meta Quest Pro.
+Los datos pertenecen al mismo visor, navegador y origen web. Borrar datos del sitio o usar navegación privada puede impedir recuperarlos. Pastracing 2 usa una base independiente (`pastracing2-v4`); **Importar trabajo de la versión anterior** copia el último trabajo de `passtracing-v3` sin modificarlo.
 
-4. After opening the link on your Meta Quest 2 or Meta Quest Pro, click on "Start AR" to start.
+Tras una primera carga completa con conexión, se prepara una caché de la aplicación, la biblioteca y el mural para volver a abrir sin conexión. Una imagen externa nueva necesita conexión; un trabajo recuperado usa su archivo almacenado.
 
-5. Use the thumbsticks (analog sticks) to control the opacity and size of the image. Hold the trigger button to position the image on top of a sheet of paper.
+## Validación
 
-6. Draw/Trace.
+La precisión objetivo es **3 mm**, pendiente de medición física. El error de los tres puntos no certifica la precisión real del visor. Siga [VALIDATION-V4.md](VALIDATION-V4.md).
 
-## Screenshots
+Pruebas automatizadas: `npm ci` y `npm test`. Cubren geometría, controles, bloqueo, imágenes, importación, recuperación y fallos de guardado. No sustituyen las pruebas sobre la pared. Los documentos V2 y V3 son históricos.
 
-<img src="Screenshots/0.jpg" width="320" />
+El movimiento ampliado es experimental: solicita `unbounded` y vuelve a `local-floor` si no está disponible. No modifica el límite físico de Quest.
 
-<img src="Screenshots/1.jpg" width="320" />
+## Créditos
 
-<img src="Screenshots/2.jpg" width="320" />
-
-<img src="Screenshots/3.jpg" width="320" />
-
-## Requirements
-
-Meta Quest 2 or Meta Quest Pro.
-
-
+Basado en [Passtracing de Fabio914](https://github.com/fabio914/passtracing), con [Three.js](https://threejs.org/) y WebXR. Se conserva la [licencia original](LICENSE). El mural fue proporcionado por el usuario desde https://files.catbox.moe/6e17fb.png.
