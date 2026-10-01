@@ -1,8 +1,8 @@
-# Passtracing
+# Pastracing 2
 
 ## V3 — controles independientes y movimiento ampliado
 
-Versión de prueba: https://mbabota8.github.io/passtracing/v3/
+Versión de prueba: https://mbabota8.github.io/pastracing2/
 
 El joystick izquierdo desplaza la imagen sobre su plano (máximo 10 cm/s); el mando derecho conserva sus controles. Los gatillos y botones X/Y mantienen sus funciones. Disponible en modo manual y sobre paredes, también con anclajes recuperados.
 
@@ -20,7 +20,7 @@ Inspired by [Easely](https://github.com/RalphVR/easely-meta-hackathon) and [Cont
 
 [Video](https://www.youtube.com/watch?v=tJqXpbIeRK8)
 
-1. Navigate to [fabio914.github.io/passtracing](https://fabio914.github.io/passtracing) with your PC.
+1. Navigate to [mbabota8.github.io/pastracing2](https://mbabota8.github.io/pastracing2) with your PC.
 
 2. Copy an image URL and paste on the text field. For example, a public domain image from [rawpixel](https://www.rawpixel.com/public-domain).
 
