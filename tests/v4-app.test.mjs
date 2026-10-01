@@ -294,3 +294,19 @@ test('saving twice uses the loaded image and retires the previous persistent han
     assert.equal(app.written.image, image);
     app.close();
 });
+
+test('a save committed while AR ends remains recoverable on the next session', async () => {
+    const app = await appHarness();
+    const session = {
+        inputSources: [], restorePersistentAnchor() {}, addEventListener() {}, removeEventListener() {},
+        requestAnimationFrame: fn => fn(0, { createAnchor: async () => ({ delete() {}, requestPersistentHandle: async () => 'committed-after-exit' }) }),
+    };
+    app.setSession(session);
+    app.context.writeLastWork = async () => { app.setSession(null); app.evaluate('onSessionEnd();'); };
+    app.evaluate("placementPoint=new THREE.Vector3();placementQuaternion=new THREE.Quaternion();trackingAvailable=true;stage='adjust';");
+    await app.evaluate('saveWork({})');
+    assert.equal(app.evaluate('savedWork.anchorId'), 'committed-after-exit');
+    assert.equal(app.evaluate('restoringAnchor'), true);
+    assert.equal(app.evaluate('saving'), false);
+    app.close();
+});
