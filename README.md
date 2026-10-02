@@ -19,7 +19,7 @@ La columna y las actualizaciones de otras paredes no cambian el plano elegido. C
 
 ## Controles
 
-Apunte a los botones del panel con el mando derecho y pulse el gatillo. El panel aparece a un lado para dejar libre el centro del mural; al seleccionar puntos de la imagen aparece delante.
+**Pulse el joystick derecho hacia dentro para abrir o cerrar el panel.** Al abrirlo aparece centrado frente a usted, con letras grandes y fondo opaco. Se queda en ese lugar: puede apartar la mirada para ver el mural. Se oculta al bloquear para dibujar o al pasar a marcar puntos de la pared. Apunte a los botones con el mando derecho y pulse el gatillo; también puede usar **Ocultar panel**.
 
 | Control                                       | Función                                                                   |
 | --------------------------------------------- | ------------------------------------------------------------------------- |

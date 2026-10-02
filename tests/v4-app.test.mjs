@@ -295,15 +295,115 @@ test('saving twice uses the loaded image and retires the previous persistent han
     app.close();
 });
 
+test('large opaque menu fits a central viewing cone and stays put when the head turns', async () => {
+    const app = await appHarness();
+    app.setSession({});
+    app.evaluate("stage='adjust';uiPage='fine';refreshWorkflow();setPanelOpen(true);placeWorkflowPanel();");
+    const panel = app.evaluate('workflowPanel');
+    const eye = app.evaluate('camera.position.clone()');
+    assert.equal(panel.parent, app.evaluate('scene'));
+    assert.equal(panel.position.x, eye.x);
+    const material = app.evaluate('uiTargets[0].material');
+    assert.equal(material.depthTest, false);
+    assert.equal(material.depthWrite, false);
+    assert.equal(material.transparent, true);
+    assert.equal(material.opacity, 1);
+    assert.ok(app.evaluate('uiTargets[0].renderOrder') >= 1000);
+    for (const mesh of app.evaluate('[workflowStatus,...uiTargets]')) {
+        const { width, height } = mesh.geometry.parameters;
+        for (const x of [-width / 2, width / 2])
+            for (const y of [-height / 2, height / 2]) {
+                const corner = new THREE.Vector3(x, y, 0)
+                    .applyMatrix4(mesh.matrix.clone().compose(mesh.position, mesh.quaternion, mesh.scale))
+                    .add(panel.position)
+                    .sub(eye);
+                assert.ok(Math.abs(Math.atan2(corner.x, -corner.z)) < Math.PI / 6);
+                assert.ok(Math.abs(Math.atan2(corner.y, -corner.z)) < Math.PI / 6);
+            }
+    }
+    const fixedPosition = panel.position.clone(),
+        fixedRotation = panel.quaternion.clone();
+    app.evaluate('camera.rotation.y=0.6;placeWorkflowPanel();');
+    assert.ok(panel.position.distanceTo(fixedPosition) < 1e-10);
+    assert.ok(panel.quaternion.angleTo(fixedRotation) < 1e-10);
+    app.evaluate('setPanelOpen(false);setPanelOpen(true);placeWorkflowPanel();');
+    assert.ok(panel.position.distanceTo(fixedPosition) > 0.1);
+    app.close();
+});
+
+test('right joystick click toggles the panel once per press without changing mural placement', async () => {
+    const app = await appHarness();
+    const right = {
+        handedness: 'right',
+        targetRaySpace: {},
+        gamepad: {
+            mapping: 'xr-standard',
+            axes: [0, 0, 0, 0],
+            buttons: Array.from({ length: 6 }, () => ({ pressed: false })),
+        },
+    };
+    app.context.rightSource = right;
+    app.context.testFrame = { getPose: () => ({}) };
+    app.setSession({ inputSources: [right] });
+    app.evaluate(
+        "controllerBindings.set(rightSource,controller1);trackingAvailable=true;stage='adjust';locked=true;setPanelOpen(true);",
+    );
+    const initial = app.evaluate('basePosition.clone()');
+    right.gamepad.buttons[3].pressed = true;
+    app.evaluate('updateInput(testFrame);');
+    assert.equal(app.evaluate('panelOpen'), false);
+    assert.equal(app.evaluate('workflowPanel.visible'), false);
+    app.evaluate('updateInput(testFrame);');
+    assert.equal(app.evaluate('panelOpen'), false);
+    right.gamepad.buttons[3].pressed = false;
+    app.evaluate('updateInput(testFrame);');
+    right.gamepad.buttons[3].pressed = true;
+    app.evaluate('updateInput(testFrame);');
+    assert.equal(app.evaluate('panelOpen'), true);
+    assert.equal(app.evaluate('locked'), true);
+    assert.ok(initial.distanceTo(app.evaluate('basePosition.clone()')) < 1e-10);
+    app.close();
+});
+
+test('menu uses the current viewer pose when opening, including the first XR frame', async () => {
+    const app = await appHarness();
+    app.setSession({});
+    app.context.panelFrame = {
+        getViewerPose: () => ({
+            transform: { position: { x: 2, y: 1.6, z: -4 }, orientation: { x: 0, y: 0, z: 0, w: 1 } },
+        }),
+    };
+    app.evaluate('setPanelOpen(true);placeWorkflowPanel(panelFrame);');
+    const panel = app.evaluate('workflowPanel.position');
+    assert.equal(panel.x, 2);
+    assert.ok(Math.abs(panel.y - 1.58) < 1e-10);
+    assert.ok(Math.abs(panel.z + 5.15) < 1e-10);
+    app.close();
+});
+
 test('a save committed while AR ends remains recoverable on the next session', async () => {
     const app = await appHarness();
     const session = {
-        inputSources: [], restorePersistentAnchor() {}, addEventListener() {}, removeEventListener() {},
-        requestAnimationFrame: fn => fn(0, { createAnchor: async () => ({ delete() {}, requestPersistentHandle: async () => 'committed-after-exit' }) }),
+        inputSources: [],
+        restorePersistentAnchor() {},
+        addEventListener() {},
+        removeEventListener() {},
+        requestAnimationFrame: (fn) =>
+            fn(0, {
+                createAnchor: async () => ({
+                    delete() {},
+                    requestPersistentHandle: async () => 'committed-after-exit',
+                }),
+            }),
     };
     app.setSession(session);
-    app.context.writeLastWork = async () => { app.setSession(null); app.evaluate('onSessionEnd();'); };
-    app.evaluate("placementPoint=new THREE.Vector3();placementQuaternion=new THREE.Quaternion();trackingAvailable=true;stage='adjust';");
+    app.context.writeLastWork = async () => {
+        app.setSession(null);
+        app.evaluate('onSessionEnd();');
+    };
+    app.evaluate(
+        "placementPoint=new THREE.Vector3();placementQuaternion=new THREE.Quaternion();trackingAvailable=true;stage='adjust';",
+    );
     await app.evaluate('saveWork({})');
     assert.equal(app.evaluate('savedWork.anchorId'), 'committed-after-exit');
     assert.equal(app.evaluate('restoringAnchor'), true);

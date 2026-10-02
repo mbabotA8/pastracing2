@@ -124,6 +124,8 @@ function inputHarness() {
         activeAnchor: null,
         pointerLine: { parent: null },
         workflowHit: () => null,
+        panelOpen: true,
+        setPanelOpen() {},
         controllerBindings: new Map([
             [left, { add() {} }],
             [right, { add() {} }],
@@ -288,6 +290,7 @@ test('actual save handler stores the translated pose and clears the offset only 
             sourcePoints: [],
             alignment: null,
             imageBlob: { type: 'image/png' },
+            setPanelOpen() {},
             persistSnapshot,
             fetch: async () => ({ blob: async () => ({ type: 'image/png' }) }),
             XRRigidTransform: class {

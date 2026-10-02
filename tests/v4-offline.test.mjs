@@ -25,7 +25,7 @@ function workerHarness() {
         },
         caches: {
             open: async () => cache,
-            keys: async () => ['other-project', 'pastracing2-v4-old', 'pastracing2-v4-20261001-1'],
+            keys: async () => ['other-project', 'pastracing2-v4-old', 'pastracing2-v4-20261002-1'],
             delete: async (name) => deleted.push(name),
         },
         fetch: async (request) => {

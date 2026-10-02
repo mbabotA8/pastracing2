@@ -180,6 +180,30 @@
                 uiPage = 'main',
                 uiTargets = [],
                 previewMarkers = [];
+            let panelOpen = true,
+                panelNeedsPlacement = true;
+            function setPanelOpen(open) {
+                panelOpen = open;
+                if (open) panelNeedsPlacement = true;
+                if (workflowPanel) workflowPanel.visible = !!renderer.xr.getSession() && panelOpen;
+            }
+            function placeWorkflowPanel(frame) {
+                if (!panelNeedsPlacement || !panelOpen || !renderer.xr.getSession()) return;
+                const pose = frame?.getViewerPose(renderer.xr.getReferenceSpace());
+                if (frame && !pose) return;
+                const view = renderer.xr.getCamera?.(camera) || camera;
+                const position = pose
+                    ? new THREE.Vector3().copy(pose.transform.position)
+                    : view.getWorldPosition(new THREE.Vector3());
+                const rotation = pose
+                    ? new THREE.Quaternion().copy(pose.transform.orientation)
+                    : view.getWorldQuaternion(new THREE.Quaternion());
+                workflowPanel.position.copy(
+                    new THREE.Vector3(0, -0.02, -1.15).applyQuaternion(rotation).add(position),
+                );
+                workflowPanel.quaternion.copy(rotation);
+                panelNeedsPlacement = false;
+            }
             const uiRay = new THREE.Raycaster();
             const pointerLine = new THREE.Line(
                 new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, -5)]),
@@ -221,8 +245,17 @@
                 const texture = new THREE.CanvasTexture(canvas);
                 const panel = new THREE.Mesh(
                     new THREE.PlaneGeometry(width, height),
-                    new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }),
+                    new THREE.MeshBasicMaterial({
+                        map: texture,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 1,
+                        depthTest: false,
+                        depthWrite: false,
+                        toneMapped: false,
+                    }),
                 );
+                panel.renderOrder = 1000;
                 panel.set = ({ content: text }) => {
                     const context = canvas.getContext('2d'),
                         padding = 12,
@@ -230,7 +263,7 @@
                     context.fillStyle = color;
                     context.fillRect(0, 0, canvas.width, canvas.height);
                     context.fillStyle = '#fff';
-                    context.font = size + 'px sans-serif';
+                    context.font = '600 ' + size + 'px sans-serif';
                     context.textBaseline = 'top';
                     let y = padding;
                     for (const paragraph of text.split('\n')) {
@@ -532,8 +565,17 @@
                         previewHeight = previewWidth / ratio;
                     previewPlane = new THREE.Mesh(
                         new THREE.PlaneGeometry(previewWidth, previewHeight),
-                        new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }),
+                        new THREE.MeshBasicMaterial({
+                            map: texture,
+                            side: THREE.DoubleSide,
+                            transparent: true,
+                            opacity: 1,
+                            depthTest: false,
+                            depthWrite: false,
+                            toneMapped: false,
+                        }),
                     );
+                    previewPlane.renderOrder = 1001;
                     previewPlane.position.set(0, 0.05, 0.015);
                     workflowPanel.add(previewPlane);
                     previewPlane.visible = false;
@@ -608,6 +650,7 @@
                     updateWalls(frame);
                     updateAnchor(frame);
                 }
+                if (frame) placeWorkflowPanel(frame);
                 updateInput(frame);
                 applyImagePose();
                 if (frame && imagePlane) {
@@ -624,7 +667,7 @@
                     else setStatus('Espere a recuperar el seguimiento antes de guardar.');
                 }
                 if (workflowPanel) {
-                    workflowPanel.visible = !!renderer.xr.getSession();
+                    workflowPanel.visible = !!renderer.xr.getSession() && panelOpen;
                     workflowPanel.updateMatrixWorld(true);
                 }
                 renderer.render(scene, camera);
@@ -636,6 +679,8 @@
                 document.querySelector('.popupWindow').style.display = 'none';
                 locked = false;
                 hiddenByUser = false;
+                setPanelOpen(true);
+                instructionsPlane.visible = false;
                 selectedWall = null;
                 wallPoints = [];
                 sessionStartedAt = performance.now();
@@ -651,7 +696,7 @@
                     );
                 } else {
                     stage = 'place';
-                    setStatus('Apunte al muro y pulse el gatillo derecho para seleccionar la pared.');
+                    setStatus('Pulse el joystick derecho hacia dentro para ocultar este panel. Después apunte al muro y pulse el gatillo derecho para seleccionar la pared.');
                 }
                 refreshWorkflow();
             }
@@ -668,6 +713,7 @@
                 placingController = null;
                 previousTrigger = false;
                 updateInput.rightWasDown = false;
+                updateInput.menuWasDown = false;
                 previousSaveButton = previousRoomButton = false;
                 previousDidPressHideImage = previousDidPressHideInstructions = false;
                 pendingSave = false;
@@ -806,6 +852,7 @@
             }
 
             function failRecovery(message) {
+                setPanelOpen(true);
                 recoveryGeneration++;
                 restoringAnchor = false;
                 recoveryFailed = true;
@@ -854,11 +901,16 @@
             function createWorkflowUI() {
                 scene.add(camera);
                 workflowPanel = new THREE.Group();
-                camera.add(workflowPanel);
-                workflowPanel.position.set(0, -0.02, -1);
+                scene.add(workflowPanel);
+                workflowPanel.position.set(0, -0.02, -1.15);
                 workflowPanel.visible = false;
-                const statusBlock = textPanel(0.82, 0.2, 0.021, 'Seleccione la pared.');
-                statusBlock.position.set(0, 0.42, 0);
+                const statusBlock = textPanel(
+                    1.05,
+                    0.24,
+                    0.032,
+                    'Pulse el joystick derecho para abrir o cerrar el panel.',
+                );
+                statusBlock.position.set(0, 0.45, 0);
                 workflowStatus = statusBlock;
                 workflowPanel.add(statusBlock);
                 const actions = [
@@ -891,7 +943,6 @@
             }
             function refreshWorkflow() {
                 if (!workflowPanel) return;
-                workflowPanel.position.x = stage === 'source' ? 0 : -0.65;
                 for (const target of uiTargets) {
                     workflowPanel.remove(target);
                     target.geometry.dispose();
@@ -945,10 +996,11 @@
                         ['show', 'Mostrar / ocultar'],
                         ['wall', 'Elegir otra pared'],
                     ];
+                actions.push(['panel', 'Ocultar panel']);
                 actions.forEach(([action, label], i) => {
-                    const block = textPanel(0.39, 0.078, 0.021, label, '#23445b');
-                    const top = stage === 'source' ? -0.25 : 0.23;
-                    block.position.set(i % 2 ? 0.205 : -0.205, top - Math.floor(i / 2) * 0.088, 0.01);
+                    const block = textPanel(0.51, 0.115, 0.032, label, '#17354d');
+                    const top = stage === 'source' ? -0.25 : 0.22;
+                    block.position.set(i % 2 ? 0.27 : -0.27, top - Math.floor(i / 2) * 0.13, 0.01);
                     block.userData.action = action;
                     workflowPanel.add(block);
                     uiTargets.push(block);
@@ -991,6 +1043,8 @@
                         (p.y - 0.5) * previewPlane.geometry.parameters.height,
                         0.005,
                     );
+                    marker.renderOrder = 1002;
+                    marker.material.depthWrite = false;
                     previewPlane.add(marker);
                     previewMarkers.push(marker);
                 });
@@ -1035,6 +1089,10 @@
                 );
             }
             function workflowAction(action) {
+                if (action === 'panel') {
+                    setPanelOpen(false);
+                    return;
+                }
                 if (saving) {
                     setStatus('Espere a que termine el guardado.');
                     return;
@@ -1073,6 +1131,7 @@
                     wallPoints = [];
                     locked = false;
                     stage = 'place';
+                    setPanelOpen(false);
                     imagePlane.visible = false;
                     uiPage = 'main';
                     refreshWorkflow();
@@ -1096,6 +1155,7 @@
                     wallPoints = [];
                     locked = false;
                     stage = 'source';
+                    setPanelOpen(true);
                     uiPage = 'main';
                     refreshWorkflow();
                     setStatus(
@@ -1119,6 +1179,7 @@
                         wallPoints = [];
                         setStatus('Marque el punto 1 del dibujo en la pared con el gatillo derecho.');
                     }
+                    setPanelOpen(false);
                     refreshWorkflow();
                     return;
                 }
@@ -1177,6 +1238,7 @@
                     }
                     locked = true;
                     stage = 'draw';
+                    setPanelOpen(false);
                     uiPage = 'main';
                     refreshWorkflow();
                     setStatus(
@@ -1261,6 +1323,7 @@
                     placementQuaternion = baseQuaternion.clone();
                     alignment = { sourcePoints, wallPoints, maxError: fit.maxError };
                     stage = 'adjust';
+                    setPanelOpen(true);
                     imagePlane.visible = true;
                     refreshWorkflow();
                     setStatus(
@@ -1273,6 +1336,7 @@
                             'Compruebe las líneas reales; este cálculo no certifica precisión física.',
                     );
                 } catch (error) {
+                    setPanelOpen(true);
                     wallPoints = [];
                     setStatus(error.message + ' Vuelva a marcar los puntos de pared.');
                     refreshWorkflow();
@@ -1318,6 +1382,7 @@
                     return;
                 }
                 saving = true;
+                setPanelOpen(true);
                 const savePosition = group.position.clone(),
                     saveQuaternion = group.quaternion.clone();
                 const snapshot = {
@@ -1356,10 +1421,10 @@
                         placementQuaternion = saveQuaternion.clone();
                         resetOffset();
                         applyImagePose();
-                } else {
-                    result.anchor?.delete();
-                    restoringAnchor = !!result.handle;
-                }
+                    } else {
+                        result.anchor?.delete();
+                        restoringAnchor = !!result.handle;
+                    }
                     setStatus(
                         result.handle
                             ? 'Trabajo guardado en este visor. Al recuperarlo, compruebe el encaje antes de dibujar.'
@@ -1392,6 +1457,15 @@
                 if (!xrSession || !frame || saving || !trackingAvailable) {
                     return;
                 }
+                const rightSource = [...controllerBindings.keys()].find(
+                    (source) => source.handedness === 'right',
+                );
+                const menuDown =
+                    !!rightSource?.gamepad?.buttons[3]?.pressed &&
+                    !!frame.getPose(rightSource.targetRaySpace, renderer.xr.getReferenceSpace());
+                if (menuDown && !updateInput.menuWasDown) setPanelOpen(!panelOpen);
+                updateInput.menuWasDown = menuDown;
+                if (menuDown) return;
 
                 let triggerDown = false,
                     saveDown = false,
@@ -1572,6 +1646,7 @@
                             resetOffset();
                             imagePlane.visible = true;
                             stage = sourcePoints.length === 3 ? 'target' : 'adjust';
+                            setPanelOpen(false);
                             refreshWorkflow();
                             setStatus(
                                 stage === 'target'
@@ -1689,8 +1764,11 @@
                 Joystick derecho arriba/abajo: tamaño; derecha/izquierda: opacidad. Bloquear desactiva
                 movimiento, giro y tamaño. Compruebe que las líneas coinciden desde varias posiciones antes de
                 dibujar.<br />En AR, apunte a los botones del panel con el mando derecho y pulse el gatillo.
-                B/Y guarda en modo pared. A/X configura la habitación si no hay paredes. En manual: gatillo
-                coloca; gatillo derecho + joystick ajusta profundidad; X oculta imagen, Y oculta ayuda.
+                <strong>Pulse el joystick derecho hacia dentro para abrir o cerrar el panel.</strong>
+                Al abrirlo aparece centrado frente a usted y se queda en ese lugar. Se oculta al empezar a
+                dibujar. B/Y guarda en modo pared. A/X configura la habitación si no hay paredes. En manual:
+                gatillo coloca; gatillo derecho + joystick ajusta profundidad; X oculta imagen, Y oculta
+                ayuda.
             </div>
             <div class="popupSection" id="desktopActions">
                 <button data-action="align">Encajar con 3 puntos</button>

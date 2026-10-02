@@ -205,6 +205,7 @@ test('restoration failure exposes retry and refit while preserving saved image',
         savedWork: saved,
         setStatus() {},
         refreshWorkflow() {},
+        setPanelOpen() {},
     });
     vm.runInContext(fn, context);
     context.failRecovery('failed');

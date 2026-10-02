@@ -1,4 +1,4 @@
-const CACHE = 'pastracing2-v4-20261001-1';
+const CACHE = 'pastracing2-v4-20261002-1';
 const assets = [
     './',
     './index.html',
